@@ -44,14 +44,12 @@ public class DataService {
         for (Object obj : list) {
             List<Object> row = (List<Object>) obj;
             Map<String, Object> m = new HashMap<>();
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
-            LocalDateTime dateTime = LocalDateTime.parse((String) row.get(1), formatter);
-            long milliseconds = dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
-            m.put("time", milliseconds / 1000);
+            m.put("time", convertToMillisecond(row.get(1)));
             m.put("value", row.get(5));
             m.put("volume", row.get(6));
             listOfMap.add(m);
         }
+        System.out.println("Number of record:" + listOfMap.size());
         return listOfMap;
     }
 
@@ -60,10 +58,7 @@ public class DataService {
         for (Object obj : list) {
             List<Object> row = (List<Object>) obj;
             Map<String, Object> m = new HashMap<>();
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
-            LocalDateTime dateTime = LocalDateTime.parse((String) row.get(1), formatter);
-            long milliseconds = dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
-            m.put("time", milliseconds / 1000);
+            m.put("time", convertToMillisecond(row.get(1)));
             m.put("open", row.get(2));
             m.put("high", row.get(3));
             m.put("low", row.get(4));
@@ -71,6 +66,47 @@ public class DataService {
             m.put("volume", row.get(6));
             listOfMap.add(m);
         }
+        System.out.println("Number of record:" + listOfMap.size());
         return listOfMap;
     }
+
+    private Long convertToMillisecond(Object object) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
+        LocalDateTime dateTime = LocalDateTime.parse((String) object, formatter);
+        long milliseconds = dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+        return milliseconds / 1000;
+    }
+
+    public List<Map<String, Object>> getIndicator(String type) {
+        String query;
+        if ("52w".equals(type)) {
+            query = """
+                    SELECT
+                        date,
+                        count(ticker) as 'total',
+                        (SUM(CASE WHEN high52w > previous_high52w THEN 1 ELSE 0 END) * 1.0 / COUNT(ticker)) * 100 AS 'high_percentage',
+                        (SUM(CASE WHEN low52w < previous_low52w THEN 1 ELSE 0 END) * 1.0 / COUNT(ticker)) * 100 AS 'low_percentage'
+                    FROM indicator_d_52w
+                    WHERE
+                    previous_close <> null
+                    ORDER BY date ASC""";
+        } else {
+            return List.of();
+        }
+        Map<String, Object> map = questDBService.executeQuery(query);
+        Map<String, Object> response = (Map<String, Object>) map.get("response");
+        List<Map<String, Object>> list = (List<Map<String, Object>>) response.get("dataset");
+        List<Map<String, Object>> listOfMap = new ArrayList<>();
+        for (Object obj : list) {
+            List<Object> row = (List<Object>) obj;
+            Map<String, Object> m = new HashMap<>();
+            m.put("time", convertToMillisecond(row.get(0)));
+            m.put("value", row.get(2));
+            m.put("low", row.get(3));
+            listOfMap.add(m);
+        }
+        System.out.println("Number of record:" + listOfMap.size());
+        return listOfMap;
+    }
+
 }
