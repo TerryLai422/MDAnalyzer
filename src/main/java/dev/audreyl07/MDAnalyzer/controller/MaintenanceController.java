@@ -20,14 +20,16 @@ public class MaintenanceController {
     @PostMapping(value = "/import-questdb")
     public ResponseEntity<Object> importQuestDb(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);
-        maintenanceService.importRawFiles();
-        return ResponseEntity.ok().body(Map.of("success", Boolean.TRUE));
+        String type = request.getOrDefault("type", "").toString();
+        Object result = maintenanceService.importRawFiles(type);
+        return ResponseEntity.ok().body(Map.of("success", result));
     }
 
     @PostMapping(value = "/insert-historical")
     public ResponseEntity<Object> insertIntoHistorical(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);
-        maintenanceService.insertIntoHistorical("");
-        return ResponseEntity.ok().body(Map.of("success", Boolean.TRUE));
+        String type = request.getOrDefault("type", "").toString();
+        Object result = maintenanceService.insertIntoHistorical(type);
+        return ResponseEntity.ok().body(Map.of("success", result));
     }
 }

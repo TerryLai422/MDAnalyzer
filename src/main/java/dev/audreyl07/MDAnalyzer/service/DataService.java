@@ -18,21 +18,28 @@ public class DataService {
     QuestDBService questDBService;
 
 
-    public Object getHistoricalData(String type, String symbol) {
-        String query =
-                "SELECT * FROM historical_d WHERE ticker = '" + symbol + "' ORDER BY date ASC;";
+    public Object getData(String dataType, String resultType, String symbol) {
+        String query = null;
+        if ("stock".equals(dataType)) {
+            query = "SELECT * FROM historical_d WHERE ticker = '" + symbol + "' ORDER BY date ASC;";
+        } else if ("index".equals(dataType)) {
+            query =
+                    "SELECT * FROM indices_d WHERE ticker = '" + symbol + "' ORDER BY date ASC;";
+        } else {
+            return Map.of();
+        }
         Map<String, Object> map = (Map<String, Object>) questDBService.executeQuery(query);
         Map<String, Object> response = (Map<String, Object>) map.get("response");
         List<Object> list = (List<Object>) response.get("dataset");
 
-        if ("candlestick".equalsIgnoreCase(type)) {
-            return outputAsCandlestick(list);
+        if ("full".equalsIgnoreCase(resultType)) {
+            return outputAsFull(list);
         }
 
-        return outputAsLine(list);
+        return outputAsSingle(list);
     }
 
-    private Object outputAsLine(List<Object> list) {
+    private Object outputAsSingle(List<Object> list) {
         List<Map<String, Object>> listOfMap = new ArrayList<>();
         for (Object obj : list) {
             List<Object> row = (List<Object>) obj;
@@ -40,7 +47,7 @@ public class DataService {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
             LocalDateTime dateTime = LocalDateTime.parse((String) row.get(1), formatter);
             long milliseconds = dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
-            m.put("time", milliseconds/1000);
+            m.put("time", milliseconds / 1000);
             m.put("value", row.get(5));
             m.put("volume", row.get(6));
             listOfMap.add(m);
@@ -48,7 +55,7 @@ public class DataService {
         return listOfMap;
     }
 
-    private Object outputAsCandlestick(List<Object> list) {
+    private Object outputAsFull(List<Object> list) {
         List<Map<String, Object>> listOfMap = new ArrayList<>();
         for (Object obj : list) {
             List<Object> row = (List<Object>) obj;
@@ -56,7 +63,7 @@ public class DataService {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
             LocalDateTime dateTime = LocalDateTime.parse((String) row.get(1), formatter);
             long milliseconds = dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
-            m.put("time", milliseconds/1000);
+            m.put("time", milliseconds / 1000);
             m.put("open", row.get(2));
             m.put("high", row.get(3));
             m.put("low", row.get(4));

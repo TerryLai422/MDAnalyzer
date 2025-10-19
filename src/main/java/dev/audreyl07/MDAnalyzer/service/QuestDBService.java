@@ -36,6 +36,23 @@ public class QuestDBService {
     @Value("${mdanalyzer.hostName}")
     String hostName;
 
+    public Boolean truncateTable(String table) {
+        String query = String.format("TRUNCATE TABLE %s", table);
+        Map<String, Object> result = (Map<String, Object>) executeQuery(query);
+        Map<String, Object> response = (Map<String, Object>) result.get("response");
+        String ddl = (String) response.get("ddl");
+        return "OK".equals(ddl);
+    }
+
+    public String getLatestDate(String table) {
+        String query = String.format("SELECT CAST(TO_STR(MAX(date), 'yyyyMMdd') AS INT) AS MAX FROM %s", table);
+        Map<String, Object> result = (Map<String, Object>) executeQuery(query);
+        Map<String, Object> response = (Map<String, Object>) result.get("response");
+        List<Object> dataset = (List<Object>) response.get("dataset");
+        List<Object> firstRecord = (List<Object>) dataset.get(0);
+        return firstRecord.get(0) == null ? "19710101" : firstRecord.get(0).toString();
+    }
+
     public Object importFiles(String table) {
         Path startPath = Paths.get(historicalDirectoryPath);
         String url = String.format(importUrlTemplate, hostName, table);
