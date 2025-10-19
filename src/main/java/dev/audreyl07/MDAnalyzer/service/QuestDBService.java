@@ -53,7 +53,7 @@ public class QuestDBService {
         return firstRecord.get(0) == null ? "19710101" : firstRecord.get(0).toString();
     }
 
-    public Object importFiles(String table) {
+    public Map<String, Object> importFiles(String table) {
         Path startPath = Paths.get(historicalDirectoryPath);
         String url = String.format(importUrlTemplate, hostName, table);
         long start = System.currentTimeMillis();
@@ -76,7 +76,7 @@ public class QuestDBService {
         return map;
     }
 
-    public List<String> listFiles(Path startPath) throws IOException {
+    private List<String> listFiles(Path startPath) throws IOException {
         List<String> fileNames = new ArrayList<>();
         Files.walkFileTree(startPath, EnumSet.noneOf(FileVisitOption.class), Integer.MAX_VALUE, new SimpleFileVisitor<>() {
             @Override
@@ -140,7 +140,7 @@ public class QuestDBService {
         }
     }
 
-    public Object executeQuery(String query) {
+    public Map<String, Object> executeQuery(String query) {
         String url = String.format(execUrlTemplate, hostName);
         String count = "true";
         Map<String, Object> map = new HashMap<>();

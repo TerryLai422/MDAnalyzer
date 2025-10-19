@@ -18,15 +18,15 @@ public class DataService {
     QuestDBService questDBService;
 
 
-    public Object getData(String dataType, String resultType, String symbol) {
-        String query = null;
+    public List<Map<String, Object>> getData(String dataType, String resultType, String symbol) {
+        String query;
         if ("stock".equals(dataType)) {
             query = "SELECT * FROM historical_d WHERE ticker = '" + symbol + "' ORDER BY date ASC;";
         } else if ("index".equals(dataType)) {
             query =
                     "SELECT * FROM indices_d WHERE ticker = '" + symbol + "' ORDER BY date ASC;";
         } else {
-            return Map.of();
+            return List.of();
         }
         Map<String, Object> map = (Map<String, Object>) questDBService.executeQuery(query);
         Map<String, Object> response = (Map<String, Object>) map.get("response");
@@ -39,7 +39,7 @@ public class DataService {
         return outputAsSingle(list);
     }
 
-    private Object outputAsSingle(List<Object> list) {
+    private List<Map<String, Object>> outputAsSingle(List<Object> list) {
         List<Map<String, Object>> listOfMap = new ArrayList<>();
         for (Object obj : list) {
             List<Object> row = (List<Object>) obj;
@@ -55,7 +55,7 @@ public class DataService {
         return listOfMap;
     }
 
-    private Object outputAsFull(List<Object> list) {
+    private List<Map<String, Object>> outputAsFull(List<Object> list) {
         List<Map<String, Object>> listOfMap = new ArrayList<>();
         for (Object obj : list) {
             List<Object> row = (List<Object>) obj;

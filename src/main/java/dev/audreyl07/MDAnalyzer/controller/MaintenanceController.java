@@ -21,15 +21,26 @@ public class MaintenanceController {
     public ResponseEntity<Object> importQuestDb(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);
         String type = request.getOrDefault("type", "").toString();
-        Object result = maintenanceService.importRawFiles(type);
-        return ResponseEntity.ok().body(Map.of("success", result));
+        Map<String, Object> result = maintenanceService.importRawFiles(type);
+        result.putIfAbsent("success", Boolean.TRUE);
+        return ResponseEntity.ok().body(result);
     }
 
     @PostMapping(value = "/insert-historical")
     public ResponseEntity<Object> insertIntoHistorical(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);
         String type = request.getOrDefault("type", "").toString();
-        Object result = maintenanceService.insertIntoHistorical(type);
-        return ResponseEntity.ok().body(Map.of("success", result));
+        Map<String, Object> result = maintenanceService.insertIntoHistorical(type);
+        result.putIfAbsent("success", Boolean.TRUE);
+        return ResponseEntity.ok().body(result);
+    }
+
+    @PostMapping(value = "/insert-52w")
+    public ResponseEntity<Object> insertIndicator52w(@RequestBody Map<String, Object> request) {
+        System.out.println("request:" + request);
+        String type = request.getOrDefault("type", "").toString();
+        Map<String, Object> result = maintenanceService.insertIndicator52w(type);
+        result.putIfAbsent("success", Boolean.TRUE);
+        return ResponseEntity.ok().body(result);
     }
 }

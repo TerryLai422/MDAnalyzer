@@ -10,22 +10,7 @@ public class MaintenanceService {
     @Autowired
     QuestDBService questDBService;
 
-    private final String historicalQuery = "INSERT INTO %s\n" +
-            "SELECT \n" +
-            "    replace(ticker, '%s', ''), \n" +
-            "    CASE WHEN per = 'D' THEN \n" +
-            "    to_timestamp(date, 'yyyyMMdd') \n" +
-            "    ELSE dateadd('h', -6, to_timestamp(concat(date,'T',time), 'yyyyMMddTHHmmss')) \n" +
-            "    END AS 'date', \n" +
-            "    open, \n" +
-            "    high, \n" +
-            "    low, \n" +
-            "    close, \n" +
-            "    vol\n" +
-            "FROM %s\n" +
-            "WHERE ";
-
-    public Object importRawFiles(String type) {
+    public Map<String, Object> importRawFiles(String type) {
         String table;
         if ("d".equals(type)) {
             table = "historical_raw_d";
@@ -34,41 +19,122 @@ public class MaintenanceService {
         } else if ("indices_d".equals(type)) {
             table = "indices_raw_d";
         } else {
-            return Boolean.FALSE;
+            return Map.of("success", Boolean.FALSE);
         }
         boolean truncated = questDBService.truncateTable(table);
         if (!truncated) {
-            return Boolean.FALSE;
+            return Map.of("success", Boolean.FALSE);
         }
-        questDBService.importFiles(table);
-        return Boolean.TRUE;
+        return questDBService.importFiles(table);
     }
 
 
-    public Object insertIntoHistorical(String type) {
-        String inTable;
-        String outTable;
+    public Map<String, Object> insertIntoHistorical(String type) {
+        String sourceTable;
+        String targetTable;
         String query;
+        String historicalQuery = """
+                INSERT INTO %s
+                SELECT\s
+                    replace(ticker, '%s', ''),\s
+                    CASE WHEN per = 'D' THEN\s
+                    to_timestamp(date, 'yyyyMMdd')\s
+                    ELSE dateadd('h', -6, to_timestamp(concat(date,'T',time), 'yyyyMMddTHHmmss'))\s
+                    END AS 'date',\s
+                    open,\s
+                    high,\s
+                    low,\s
+                    close,\s
+                    vol
+                FROM %s
+                WHERE\s""";
+
         if ("d".equals(type)) {
-            inTable = "historical_d";
-            outTable = "historical_raw_d";
-            query = String.format(historicalQuery, inTable, ".US", outTable);
+            sourceTable = "historical_d";
+            targetTable = "historical_raw_d";
+            query = String.format(historicalQuery, sourceTable, ".US", targetTable);
         } else if ("etf_d".equals(type)) {
-            inTable = "historical_etf_d";
-            outTable = "historical_raw_etf_d";
-            query = String.format(historicalQuery, inTable, ".US", outTable);
+            sourceTable = "historical_etf_d";
+            targetTable = "historical_raw_etf_d";
+            query = String.format(historicalQuery, sourceTable, ".US", targetTable);
         } else if ("indices_d".equals(type)) {
-            inTable = "indices_d";
-            outTable = "indices_raw_d";
-            query = String.format(historicalQuery, inTable, "^", outTable);
+            sourceTable = "indices_d";
+            targetTable = "indices_raw_d";
+            query = String.format(historicalQuery, sourceTable, "^", targetTable);
         } else {
-            return Boolean.FALSE;
+            return Map.of("success", Boolean.FALSE);
         }
-        String latest = questDBService.getLatestDate(inTable);
+        String latest = questDBService.getLatestDate(sourceTable);
         System.out.println("Latest:" + latest);
         query += "date > '" + latest + "' ORDER BY date, time ASC;";
-        System.out.println("Query:" + query);
-        questDBService.executeQuery(query);
-        return Boolean.TRUE;
+        return questDBService.executeQuery(query);
     }
+
+    public Map<String, Object> insertIndicator52w(String type) {
+        String sourceTable;
+        String targetTable;
+        if ("d".equals(type)) {
+            sourceTable = "historical_d";
+            targetTable = "indicator_d_52w";
+        } else if ("etf_d".equals(type)) {
+            sourceTable = "historical_etf_d";
+            targetTable = "indicator_etf_52w";
+        } else {
+            return Map.of("success", Boolean.FALSE);
+        }
+        boolean truncated = questDBService.truncateTable(targetTable);
+        if (!truncated) {
+            return Map.of("success", Boolean.FALSE);
+        }
+        String indicator52wQuery = """
+                WITH first_stage AS
+                (SELECT
+                  'GENERAL' AS type,
+                  date,
+                  ticker,
+                  high,
+                  low,
+                  close,
+                  first_value(close) OVER (
+                      PARTITION BY ticker
+                      ORDER BY date
+                      ROWS 1 PRECEDING EXCLUDE CURRENT ROW
+                  ) AS 'previous_close',
+                  vol,
+                  first_value(vol) OVER (
+                      PARTITION BY ticker
+                      ORDER BY date
+                      ROWS 1 PRECEDING EXCLUDE CURRENT ROW
+                  ) AS 'previous_vol',
+                  max(high) OVER (
+                    PARTITION BY ticker
+                      ORDER BY date
+                      RANGE BETWEEN '365' DAY PRECEDING AND CURRENT ROW
+                  ) AS 'high52w',
+                  max(high) OVER (
+                    PARTITION BY ticker
+                      ORDER BY date
+                      RANGE BETWEEN '365' DAY PRECEDING AND CURRENT ROW EXCLUDE CURRENT ROW
+                  ) AS 'previous_high52w',
+                  min(low) OVER (
+                    PARTITION BY ticker
+                      ORDER BY date
+                      RANGE BETWEEN '365' DAY PRECEDING AND CURRENT ROW
+                  ) AS 'low52w',
+                  min(low) OVER (
+                    PARTITION BY ticker
+                      ORDER BY date
+                      RANGE BETWEEN '365' DAY PRECEDING AND CURRENT ROW EXCLUDE CURRENT ROW
+                  ) AS 'previous_low52w'
+                FROM %s)
+                INSERT INTO %s
+                SELECT
+                  type, date, ticker, high, low, close, previous_close, vol, previous_vol,
+                  high52w, previous_high52w, (close - high52w)/high52w, low52w, previous_low52w, (close - low52w)/low52w
+                FROM first_stage;""";
+
+        String query = String.format(indicator52wQuery, sourceTable, targetTable);
+        return questDBService.executeQuery(query);
+    }
+
 }
