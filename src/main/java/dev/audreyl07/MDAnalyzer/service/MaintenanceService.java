@@ -50,17 +50,17 @@ public class MaintenanceService {
                 WHERE\s""";
 
         if ("d".equals(type)) {
-            sourceTable = "historical_d";
-            targetTable = "historical_raw_d";
-            query = String.format(historicalQuery, sourceTable, ".US", targetTable);
+            sourceTable = "historical_raw_d";
+            targetTable = "historical_d";
+            query = String.format(historicalQuery, targetTable, ".US", sourceTable);
         } else if ("etf_d".equals(type)) {
-            sourceTable = "historical_etf_d";
-            targetTable = "historical_raw_etf_d";
-            query = String.format(historicalQuery, sourceTable, ".US", targetTable);
+            sourceTable = "historical_raw_etf_d";
+            targetTable = "historical_etf_d";
+            query = String.format(historicalQuery, targetTable, ".US", sourceTable);
         } else if ("indices_d".equals(type)) {
-            sourceTable = "indices_d";
-            targetTable = "indices_raw_d";
-            query = String.format(historicalQuery, sourceTable, "^", targetTable);
+            sourceTable = "indices_raw_d";
+            targetTable = "indices_d";
+            query = String.format(historicalQuery, targetTable, "^", sourceTable);
         } else {
             return Map.of("success", Boolean.FALSE);
         }
