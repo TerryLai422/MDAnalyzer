@@ -21,9 +21,9 @@ public class DataController {
         return ResponseEntity.ok().body(dataService.getData(dataType, resultType, symbol));
     }
 
-    @GetMapping(value = "/indicator/{resultType}/{type}")
-    public ResponseEntity<Object> getIndicator(@PathVariable String type) {
+    @GetMapping(value = "/market/{resultType}/{type}")
+    public ResponseEntity<Object> getMarketAnalysis(@PathVariable String type) {
         System.out.println("type:" + type);
-        return ResponseEntity.ok().body(dataService.getIndicator(type));
+        return ResponseEntity.ok().body(dataService.getAnalysisMarket(type));
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -39,8 +40,29 @@ public class MaintenanceController {
     public ResponseEntity<Object> insertIndicator52w(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);
         String type = request.getOrDefault("type", "").toString();
-        Map<String, Object> result = maintenanceService.insertIndicator52w(type);
+        Map<String, Object> result = maintenanceService.insertIntoIndicator52w(type);
         result.putIfAbsent("success", Boolean.TRUE);
         return ResponseEntity.ok().body(result);
+    }
+
+    @PostMapping(value = "/update-52w")
+    public ResponseEntity<Object> test(@RequestBody Map<String, Object> request) {
+        System.out.println("request:" + request);
+        String type = request.getOrDefault("type", "").toString();
+        Map<String, Object> result = maintenanceService.updateAnalysisMarket(type);
+        result.putIfAbsent("success", Boolean.TRUE);
+        return ResponseEntity.ok().body(result);
+    }
+
+    @PostMapping(value = "/latest")
+    public ResponseEntity<Object> getlatest(@RequestBody Map<String, Object> request) {
+        System.out.println("request:" + request);
+        String table = request.getOrDefault("table", "").toString();
+        String type = request.getOrDefault("type", "").toString();
+        String result = maintenanceService.getLatestDate(table, type);
+        Map<String, Object> map = new HashMap<>();
+        map.put("success", Boolean.TRUE);
+        map.put("latest", result);
+        return ResponseEntity.ok().body(map);
     }
 }

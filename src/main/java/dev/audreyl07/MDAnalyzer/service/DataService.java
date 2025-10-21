@@ -23,12 +23,11 @@ public class DataService {
         if ("stock".equals(dataType)) {
             query = "SELECT * FROM historical_d WHERE ticker = '" + symbol + "' ORDER BY date ASC;";
         } else if ("index".equals(dataType)) {
-            query =
-                    "SELECT * FROM indices_d WHERE ticker = '" + symbol + "' ORDER BY date ASC;";
+            query = "SELECT * FROM indices_d WHERE ticker = '" + symbol + "' ORDER BY date ASC;";
         } else {
             return List.of();
         }
-        Map<String, Object> map = (Map<String, Object>) questDBService.executeQuery(query);
+        Map<String, Object> map = questDBService.executeQuery(query);
         Map<String, Object> response = (Map<String, Object>) map.get("response");
         List<Object> list = (List<Object>) response.get("dataset");
 
@@ -77,22 +76,16 @@ public class DataService {
         return milliseconds / 1000;
     }
 
-    public List<Map<String, Object>> getIndicator(String type) {
+    public List<Map<String, Object>> getAnalysisMarket(String type) {
         String query;
-        if ("52w".equals(type)) {
-            query = """
-                    SELECT
-                        date,
-                        count(ticker) as 'total',
-                        (SUM(CASE WHEN high52w > previous_high52w THEN 1 ELSE 0 END) * 1.0 / COUNT(ticker)) * 100 AS 'high_percentage',
-                        (SUM(CASE WHEN low52w < previous_low52w THEN 1 ELSE 0 END) * 1.0 / COUNT(ticker)) * 100 AS 'low_percentage'
-                    FROM indicator_d_52w
-                    WHERE
-                    previous_close <> null
-                    ORDER BY date ASC""";
+        if ("high52w".equals(type)) {
+            query = "SELECT date, percentage FROM analysis_market WHERE type = 'high52w' ORDER BY date ASC";
+        } else if ("low52w".equals(type)) {
+            query = "SELECT date, percentage FROM analysis_market WHERE type = 'low52w' ORDER BY date ASC";
         } else {
             return List.of();
         }
+        System.out.println("Query:" + query);
         Map<String, Object> map = questDBService.executeQuery(query);
         Map<String, Object> response = (Map<String, Object>) map.get("response");
         List<Map<String, Object>> list = (List<Map<String, Object>>) response.get("dataset");
@@ -101,8 +94,7 @@ public class DataService {
             List<Object> row = (List<Object>) obj;
             Map<String, Object> m = new HashMap<>();
             m.put("time", convertToMillisecond(row.get(0)));
-            m.put("value", row.get(2));
-            m.put("low", row.get(3));
+            m.put("value", row.get(1));
             listOfMap.add(m);
         }
         System.out.println("Number of record:" + listOfMap.size());

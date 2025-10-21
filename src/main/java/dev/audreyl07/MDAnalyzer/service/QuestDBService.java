@@ -38,17 +38,23 @@ public class QuestDBService {
 
     public Boolean truncateTable(String table) {
         String query = String.format("TRUNCATE TABLE %s", table);
-        Map<String, Object> result = (Map<String, Object>) executeQuery(query);
+        Map<String, Object> result = executeQuery(query);
         Map<String, Object> response = (Map<String, Object>) result.get("response");
         String ddl = (String) response.get("ddl");
         return "OK".equals(ddl);
     }
 
-    public String getLatestDate(String table) {
+    public String getLatestDate(String table, String condition) {
         String query = String.format("SELECT CAST(TO_STR(MAX(date), 'yyyyMMdd') AS INT) AS MAX FROM %s", table);
-        Map<String, Object> result = (Map<String, Object>) executeQuery(query);
+        if (condition != null && !condition.isEmpty()) {
+            query += " WHERE " + condition;
+        }
+        Map<String, Object> result = executeQuery(query);
         Map<String, Object> response = (Map<String, Object>) result.get("response");
         List<Object> dataset = (List<Object>) response.get("dataset");
+        if (dataset == null || dataset.isEmpty()) {
+            return null;
+        }
         List<Object> firstRecord = (List<Object>) dataset.get(0);
         return firstRecord.get(0) == null ? "19710101" : firstRecord.get(0).toString();
     }
