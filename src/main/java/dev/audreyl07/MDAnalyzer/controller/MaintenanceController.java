@@ -45,6 +45,15 @@ public class MaintenanceController {
         return ResponseEntity.ok().body(result);
     }
 
+    @PostMapping(value = "/insert-analysis-market")
+    public ResponseEntity<Object> insertAnalysisMarket(@RequestBody Map<String, Object> request) {
+        System.out.println("request:" + request);
+        String type = request.getOrDefault("type", "").toString();
+        Map<String, Object> result = maintenanceService.insertIntoAnalysisMarket(type);
+        result.putIfAbsent("success", Boolean.TRUE);
+        return ResponseEntity.ok().body(result);
+    }
+
     @PostMapping(value = "/update-52w")
     public ResponseEntity<Object> test(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);

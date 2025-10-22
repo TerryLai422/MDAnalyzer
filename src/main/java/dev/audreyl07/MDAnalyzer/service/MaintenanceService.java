@@ -103,15 +103,19 @@ public class MaintenanceService {
         } else {
             return getFalseMap();
         }
-//        boolean truncated = questDBService.truncateTable(targetTable);
-//        if (!truncated) {
-//            return getFalseMap();
-//        }
-        String latest =  getLatestDate(targetTable, "GENERAL");
+
+        String latest = getLatestDate(targetTable, "GENERAL");
         System.out.println("Latest:" + latest);
         if (latest == null) {
             return getFalseMap();
         }
+        String sourceCondition1 = "";
+        String targetCondition2 = "";
+        if (!"19710101".equals(latest)) {
+            sourceCondition1 = "WHERE date > dateadd('d', -400, to_date('" + latest + "', 'yyyyMMdd'))";
+            targetCondition2 = "WHERE date > to_date('" + latest + "', 'yyyyMMdd')";
+        }
+
         String indicator52wQuery = """
                 WITH first_stage AS
                 (SELECT
@@ -152,16 +156,14 @@ public class MaintenanceService {
                       ORDER BY date
                       RANGE BETWEEN '365' DAY PRECEDING AND CURRENT ROW EXCLUDE CURRENT ROW
                   ) AS 'previous_low52w'
-                FROM %s)
+                FROM %s %s)
                 INSERT INTO %s
                 SELECT
                   type, date, ticker, high, low, close, previous_close, vol, previous_vol,
                   high52w, previous_high52w, (close - high52w)/high52w, low52w, previous_low52w, (close - low52w)/low52w
-                FROM first_stage WHERE date > to_date('%s', 'yyyyMMdd')""";
+                FROM first_stage %s""";
 
-        String query = String.format(indicator52wQuery, sourceTable, targetTable, latest);
-        System.out.println("Query:" + query);
-//        return getFalseMap();
+        String query = String.format(indicator52wQuery, sourceTable, sourceCondition1, targetTable, targetCondition2);
         return questDBService.executeQuery(query);
     }
 
@@ -180,7 +182,7 @@ public class MaintenanceService {
                         (SUM(CASE WHEN high52w > previous_high52w THEN 1 ELSE 0 END) * 1.0 / COUNT(ticker)) * 100 AS 'percentage'
                     FROM indicator_d_52w
                     WHERE
-                    previous_close <> null""";
+                    previous_close <> null """;
         } else if ("low52w".equals(indicatorType)) {
             condition = " type = 'low52w'";
             query = """
@@ -193,7 +195,7 @@ public class MaintenanceService {
                         (SUM(CASE WHEN low52w < previous_low52w THEN 1 ELSE 0 END) * 1.0 / COUNT(ticker)) * 100 AS 'percentage'
                     FROM indicator_d_52w
                     WHERE
-                    previous_close <> null""";
+                    previous_close <> null """;
         } else {
             return getFalseMap();
         }
@@ -204,7 +206,6 @@ public class MaintenanceService {
         }
         query += " AND date > to_date('" + latest + "', 'yyyyMMdd')\n";
         query += " ORDER BY type, date ASC;";
-        System.out.println("Query:" + query);
         return questDBService.executeQuery(query);
     }
 

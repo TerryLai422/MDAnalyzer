@@ -152,7 +152,7 @@ public class QuestDBService {
         Map<String, Object> map = new HashMap<>();
         long start = System.currentTimeMillis();
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            System.out.println("query:" + query);
+            System.out.println("Query:\n" + query);
             URI uri = new URIBuilder(url)
                     .addParameter("query", query)
                     .addParameter("count", count)
