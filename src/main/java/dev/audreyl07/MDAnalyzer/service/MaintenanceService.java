@@ -125,16 +125,14 @@ public class MaintenanceService {
                   high,
                   low,
                   close,
-                  first_value(close) OVER (
+                  lag(close) OVER (
                       PARTITION BY ticker
                       ORDER BY date
-                      ROWS 1 PRECEDING EXCLUDE CURRENT ROW
                   ) AS 'previous_close',
                   vol,
-                  first_value(vol) OVER (
+                  lag(vol) OVER (
                       PARTITION BY ticker
                       ORDER BY date
-                      ROWS 1 PRECEDING EXCLUDE CURRENT ROW
                   ) AS 'previous_vol',
                   max(high) OVER (
                     PARTITION BY ticker
