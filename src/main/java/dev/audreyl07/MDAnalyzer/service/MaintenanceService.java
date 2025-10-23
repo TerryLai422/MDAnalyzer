@@ -165,7 +165,149 @@ public class MaintenanceService {
         return questDBService.executeQuery(query);
     }
 
-    public Map<String, Object> insertIntoAnalysis(String indicatorType) {
+    public Map<String, Object> insertIntoIndicatorMA(String type, int interval, boolean truncate) {
+        String sourceTable;
+        String targetTable;
+        if ("d".equals(type)) {
+            sourceTable = "historical_d";
+            targetTable = "indicator_d_MA";
+        } else if ("etf_d".equals(type)) {
+            sourceTable = "historical_etf_d";
+            targetTable = "indicator_etf_MA";
+        } else {
+            return getFalseMap();
+        }
+
+        if (truncate) {
+            boolean truncated = questDBService.truncateTable(targetTable);
+            if (!truncated) {
+                return getFalseMap();
+            }
+        }
+
+        String indicatorMAQuery = """
+                WITH first_stage AS
+                (SELECT
+                    date, ticker, close AS 'value1',
+                    avg(close) OVER
+                        (PARTITION BY ticker ORDER BY date
+                        ROWS BETWEEN %s PRECEDING AND CURRENT ROW
+                        EXCLUDE CURRENT ROW)
+                    AS 'value2',
+                    count() OVER
+                        (PARTITION BY ticker ORDER BY date
+                        ROWS BETWEEN UNBOUNDED PRECEDING AND %s PRECEDING)
+                    AS 'total'
+                FROM %s),
+                second_stage AS
+                (SELECT
+                    date, ticker, value1, value2, total,
+                    value1 - value2 AS 'difference',
+                    ((value1 - value2) / value2) * 100 AS 'percentage',
+                    first_value(value1 - value2) OVER\s
+                        (PARTITION BY ticker ORDER BY date\s
+                        ROWS 1 PRECEDING EXCLUDE CURRENT ROW)\s
+                    AS 'previous_difference'
+                FROM first_stage
+                WHERE total > 0),
+                third_stage AS
+                (SELECT
+                    date, ticker, value1, value2, total,
+                    difference, previous_difference, percentage,
+                    CASE
+                        WHEN difference >=0 and previous_difference >= 0 THEN total
+                        ELSE
+                            CASE
+                                WHEN difference < 0 and previous_difference < 0 THEN total
+                                ELSE (1 - total)
+                            END
+                    END AS 'trend'
+                FROM second_stage),
+                fourth_stage AS
+                (SELECT
+                    date, ticker, value1, value2, total,
+                    difference, previous_difference, percentage, trend,
+                    min(trend) OVER (PARTITION BY ticker ORDER BY date\s
+                        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+                    AS 'minimum_trend'
+                FROM third_stage)
+                INSERT INTO %s
+                SELECT
+                    'MA_%s' AS type, date, ticker, value1, value2, total,
+                    difference, previous_difference, percentage, trend, minimum_trend,
+                    (total + minimum_trend) AS 'trending'
+                FROM fourth_stage""";
+
+        String query = String.format(indicatorMAQuery, interval, interval, sourceTable, targetTable, interval);
+        System.out.println("query:\n" + query);
+//        return getFalseMap();
+        return questDBService.executeQuery(query);
+    }
+
+    public Map<String, Object> insertIntoAnalysisMA(String indicatorType) {
+        String condition;
+        String query;
+        if ("MA".equals(indicatorType)) {
+            condition = " type LIKE 'MA_%'";
+            query = """
+                    INSERT INTO analysis_market
+                    SELECT
+                        type,
+                        date,
+                        COUNT(ticker) AS 'total',
+                        SUM(CASE WHEN difference > 0 THEN 1 ELSE 0 END) AS 'count',
+                        (SUM(CASE WHEN difference > 0 THEN 1 ELSE 0 END) * 1.0 / COUNT(ticker)) * 100 AS 'percentage'
+                    FROM
+                      indicator_d_MA
+                    WHERE
+                    type LIKE 'MA_%'
+                    AND total > 0""";
+        } else {
+            return getFalseMap();
+        }
+        String latest = questDBService.getLatestDate("analysis_market", condition);
+        System.out.println("Latest:" + latest);
+        if (latest == null) {
+            return getFalseMap();
+        }
+        query += " AND date > to_date('" + latest + "', 'yyyyMMdd')";
+        query += " GROUP BY type, date ORDER BY type, date ASC;";
+        System.out.println("Query:\n" + query);
+//        return getFalseMap();
+        return questDBService.executeQuery(query);
+    }
+
+    public Map<String, Object> updateAnalysisMA(String type) {
+        Map<String, Object> result1 = insertIntoIndicatorMA(type, 50, true);
+        if (!result1.containsKey("response")) {
+            return getFalseMap();
+        }
+        Map<String, Object> response1 = (Map<String, Object>) result1.get("response");
+        if (!"OK".equals(response1.getOrDefault("dml", "FAILURE"))) {
+            return getFalseMap();
+        }
+        Map<String, Object> result2 = insertIntoIndicatorMA(type, 200, false);
+        if (!result2.containsKey("response")) {
+            return getFalseMap();
+        }
+        Map<String, Object> response2 = (Map<String, Object>) result1.get("response");
+        if (!"OK".equals(response2.getOrDefault("dml", "FAILURE"))) {
+            return getFalseMap();
+        }
+        Map<String, Object> result3 = insertIntoAnalysisMA("MA");
+        if (!result3.containsKey("response")) {
+            return getFalseMap();
+        }
+        Map<String, Object> response3 = (Map<String, Object>) result1.get("response");
+        if (!"OK".equals(response3.getOrDefault("dml", "FAILURE"))) {
+            return getFalseMap();
+        }
+        Map<String, Object> map = getFalseMap();
+        map.put("success", Boolean.TRUE);
+        return map;
+    }
+
+    public Map<String, Object> insertIntoAnalysis52w(String indicatorType) {
         String condition;
         String query;
         if ("high52w".equals(indicatorType)) {
@@ -207,7 +349,7 @@ public class MaintenanceService {
         return questDBService.executeQuery(query);
     }
 
-    public Map<String, Object> updateAnalysis(String type) {
+    public Map<String, Object> updateAnalysis52w(String type) {
         Map<String, Object> result1 = insertIntoIndicator52w(type);
         if (!result1.containsKey("response")) {
             return getFalseMap();
@@ -216,7 +358,7 @@ public class MaintenanceService {
         if (!"OK".equals(response1.getOrDefault("dml", "FAILURE"))) {
             return getFalseMap();
         }
-        Map<String, Object> result2 = insertIntoAnalysis("high52w");
+        Map<String, Object> result2 = insertIntoAnalysis52w("high52w");
         if (!result2.containsKey("response")) {
             return getFalseMap();
         }
@@ -224,7 +366,7 @@ public class MaintenanceService {
         if (!"OK".equals(response2.getOrDefault("dml", "FAILURE"))) {
             return getFalseMap();
         }
-        Map<String, Object> result3 = insertIntoAnalysis("low52w");
+        Map<String, Object> result3 = insertIntoAnalysis52w("low52w");
         if (!result3.containsKey("response")) {
             return getFalseMap();
         }

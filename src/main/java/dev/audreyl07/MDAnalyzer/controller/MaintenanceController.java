@@ -45,11 +45,11 @@ public class MaintenanceController {
         return ResponseEntity.ok().body(result);
     }
 
-    @PostMapping(value = "/insert-analysis")
-    public ResponseEntity<Object> insertAnalysis(@RequestBody Map<String, Object> request) {
+    @PostMapping(value = "/insert-analysis52w")
+    public ResponseEntity<Object> insertAnalysis52w(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);
         String type = request.getOrDefault("type", "").toString();
-        Map<String, Object> result = maintenanceService.insertIntoAnalysis(type);
+        Map<String, Object> result = maintenanceService.insertIntoAnalysis52w(type);
         result.putIfAbsent("success", Boolean.TRUE);
         return ResponseEntity.ok().body(result);
     }
@@ -58,11 +58,29 @@ public class MaintenanceController {
     public ResponseEntity<Object> test(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);
         String type = request.getOrDefault("type", "").toString();
-        Map<String, Object> result = maintenanceService.updateAnalysis(type);
+        Map<String, Object> result = maintenanceService.updateAnalysis52w(type);
         result.putIfAbsent("success", Boolean.TRUE);
         return ResponseEntity.ok().body(result);
     }
 
+    @PostMapping(value = "/insert-MA")
+    public ResponseEntity<Object> insertIndicatorMA(@RequestBody Map<String, Object> request) {
+        System.out.println("request:" + request);
+        String type = request.getOrDefault("type", "").toString();
+        int interval = Integer.valueOf(request.getOrDefault("interval", 0).toString());
+        boolean truncate = Boolean.valueOf(request.getOrDefault("truncate", Boolean.FALSE).toString());
+        Map<String, Object> result = maintenanceService.insertIntoIndicatorMA(type, interval, truncate);
+        result.putIfAbsent("success", Boolean.TRUE);
+        return ResponseEntity.ok().body(result);
+    }
+    @PostMapping(value = "/insert-analysisMA")
+    public ResponseEntity<Object> insertAnalysisMA(@RequestBody Map<String, Object> request) {
+        System.out.println("request:" + request);
+        String type = request.getOrDefault("type", "").toString();
+        Map<String, Object> result = maintenanceService.insertIntoAnalysisMA(type);
+        result.putIfAbsent("success", Boolean.TRUE);
+        return ResponseEntity.ok().body(result);
+    }
     @PostMapping(value = "/latest")
     public ResponseEntity<Object> getlatest(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);
