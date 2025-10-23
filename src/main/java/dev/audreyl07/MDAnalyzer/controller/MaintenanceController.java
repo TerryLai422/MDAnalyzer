@@ -45,11 +45,11 @@ public class MaintenanceController {
         return ResponseEntity.ok().body(result);
     }
 
-    @PostMapping(value = "/insert-analysis-market")
-    public ResponseEntity<Object> insertAnalysisMarket(@RequestBody Map<String, Object> request) {
+    @PostMapping(value = "/insert-analysis")
+    public ResponseEntity<Object> insertAnalysis(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);
         String type = request.getOrDefault("type", "").toString();
-        Map<String, Object> result = maintenanceService.insertIntoAnalysisMarket(type);
+        Map<String, Object> result = maintenanceService.insertIntoAnalysis(type);
         result.putIfAbsent("success", Boolean.TRUE);
         return ResponseEntity.ok().body(result);
     }
@@ -58,7 +58,7 @@ public class MaintenanceController {
     public ResponseEntity<Object> test(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);
         String type = request.getOrDefault("type", "").toString();
-        Map<String, Object> result = maintenanceService.updateAnalysisMarket(type);
+        Map<String, Object> result = maintenanceService.updateAnalysis(type);
         result.putIfAbsent("success", Boolean.TRUE);
         return ResponseEntity.ok().body(result);
     }

@@ -87,7 +87,7 @@ public class MaintenanceService {
         if (latest == null) {
             return getFalseMap();
         }
-        query += "date > '" + latest + "' ORDER BY date, time ASC;";
+        query += " date > '" + latest + "' ORDER BY date, time ASC;";
         return questDBService.executeQuery(query);
     }
 
@@ -165,7 +165,7 @@ public class MaintenanceService {
         return questDBService.executeQuery(query);
     }
 
-    public Map<String, Object> insertIntoAnalysisMarket(String indicatorType) {
+    public Map<String, Object> insertIntoAnalysis(String indicatorType) {
         String condition;
         String query;
         if ("high52w".equals(indicatorType)) {
@@ -207,29 +207,29 @@ public class MaintenanceService {
         return questDBService.executeQuery(query);
     }
 
-    public Map<String, Object> updateAnalysisMarket(String type) {
+    public Map<String, Object> updateAnalysis(String type) {
         Map<String, Object> result1 = insertIntoIndicator52w(type);
         if (!result1.containsKey("response")) {
             return getFalseMap();
         }
         Map<String, Object> response1 = (Map<String, Object>) result1.get("response");
-        if (!"OK".equals(response1.getOrDefault("ddl", "FAILURE"))) {
+        if (!"OK".equals(response1.getOrDefault("dml", "FAILURE"))) {
             return getFalseMap();
         }
-        Map<String, Object> result2 = insertIntoAnalysisMarket("high52w");
+        Map<String, Object> result2 = insertIntoAnalysis("high52w");
         if (!result2.containsKey("response")) {
             return getFalseMap();
         }
         Map<String, Object> response2 = (Map<String, Object>) result1.get("response");
-        if (!"OK".equals(response2.getOrDefault("ddl", "FAILURE"))) {
+        if (!"OK".equals(response2.getOrDefault("dml", "FAILURE"))) {
             return getFalseMap();
         }
-        Map<String, Object> result3 = insertIntoAnalysisMarket("low52w");
+        Map<String, Object> result3 = insertIntoAnalysis("low52w");
         if (!result3.containsKey("response")) {
             return getFalseMap();
         }
         Map<String, Object> response3 = (Map<String, Object>) result1.get("response");
-        if (!"OK".equals(response3.getOrDefault("ddl", "FAILURE"))) {
+        if (!"OK".equals(response3.getOrDefault("dml", "FAILURE"))) {
             return getFalseMap();
         }
         Map<String, Object> map = getFalseMap();

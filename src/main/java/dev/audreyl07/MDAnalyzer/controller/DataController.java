@@ -18,12 +18,9 @@ public class DataController {
         System.out.println("dataType:" + dataType);
         System.out.println("resultType:" + resultType);
         System.out.println("symbol:" + symbol);
+        if ("market".equalsIgnoreCase(dataType)) {
+            return ResponseEntity.ok().body(dataService.getAnalysis(symbol));
+        }
         return ResponseEntity.ok().body(dataService.getData(dataType, resultType, symbol));
-    }
-
-    @GetMapping(value = "/market/{resultType}/{type}")
-    public ResponseEntity<Object> getMarketAnalysis(@PathVariable String type) {
-        System.out.println("type:" + type);
-        return ResponseEntity.ok().body(dataService.getAnalysisMarket(type));
     }
 }

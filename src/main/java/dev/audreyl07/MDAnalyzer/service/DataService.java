@@ -76,7 +76,7 @@ public class DataService {
         return milliseconds / 1000;
     }
 
-    public List<Map<String, Object>> getAnalysisMarket(String type) {
+    public List<Map<String, Object>> getAnalysis(String type) {
         String query;
         if ("high52w".equals(type)) {
             query = "SELECT date, percentage FROM analysis_market WHERE type = 'high52w' ORDER BY date ASC";
