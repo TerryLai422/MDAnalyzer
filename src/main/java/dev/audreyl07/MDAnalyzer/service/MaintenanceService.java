@@ -180,7 +180,7 @@ public class MaintenanceService {
                         (SUM(CASE WHEN high52w > previous_high52w THEN 1 ELSE 0 END) * 1.0 / COUNT(ticker)) * 100 AS 'percentage'
                     FROM indicator_d_52w
                     WHERE
-                    previous_close <> null """;
+                    previous_close <> null""";
         } else if ("low52w".equals(indicatorType)) {
             condition = " type = 'low52w'";
             query = """
@@ -193,7 +193,7 @@ public class MaintenanceService {
                         (SUM(CASE WHEN low52w < previous_low52w THEN 1 ELSE 0 END) * 1.0 / COUNT(ticker)) * 100 AS 'percentage'
                     FROM indicator_d_52w
                     WHERE
-                    previous_close <> null """;
+                    previous_close <> null""";
         } else {
             return getFalseMap();
         }
