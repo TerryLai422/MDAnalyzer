@@ -277,6 +277,110 @@ public class MaintenanceService {
         return questDBService.executeQuery(query);
     }
 
+    public Map<String, Object> insertIntoIndicatorMACompare(String type, int firstInterval, int secondInterval) {
+        String sourceTable;
+        String targetTable;
+        if ("d".equals(type)) {
+            sourceTable = "historical_d";
+            targetTable = "indicator_d_MA";
+        } else if ("etf_d".equals(type)) {
+            sourceTable = "historical_etf_d";
+            targetTable = "indicator_etf_MA";
+        } else {
+            return getFalseMap();
+        }
+
+
+        String indicatorMAQuery = """
+               WITH first_stage AS
+                 (SELECT
+                     i1.date, i1.ticker,
+                     i1.value2 AS 'value1',
+                     i2.value2 AS 'value2',
+                         count() OVER\s
+                         (PARTITION BY i2.ticker ORDER BY i2.date\s
+                         )\s
+                     AS 'total'
+                 FROM indicator_d_MA i1
+                 JOIN indicator_d_MA i2 ON i1.date = i2.date AND i1.ticker = i2.ticker
+                 WHERE i1.type = 'MA_%s' and i2.type = 'MA_%s'
+                 AND i1.ticker = 'TSLA'),
+                 second_stage AS
+                 (SELECT
+                     date, ticker, value1, value2, total,
+                     value1 - value2 AS 'difference',
+                     ((value1 - value2) / value2) * 100 AS 'percentage',
+                     first_value(value1 - value2) OVER\s
+                         (PARTITION BY ticker ORDER BY date
+                         ROWS 1 PRECEDING EXCLUDE CURRENT ROW)
+                     AS 'previous_difference'
+                 FROM first_stage
+                 WHERE total > 0),
+                 third_stage AS
+                 (SELECT
+                     date, ticker, value1, value2, total,
+                     difference, previous_difference, percentage,
+                     CASE
+                         WHEN difference >=0 and previous_difference >= 0 THEN total
+                         ELSE
+                             CASE
+                                 WHEN difference < 0 and previous_difference < 0 THEN total
+                                 ELSE (1 - total)
+                             END
+                     END AS 'trend'
+                 FROM second_stage),
+                 fourth_stage AS
+                 (SELECT
+                     date, ticker, value1, value2, total,
+                     difference, previous_difference, percentage, trend,
+                     min(trend) OVER (PARTITION BY ticker ORDER BY date\s
+                         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+                     AS 'minimum_trend'
+                 FROM third_stage)
+                 SELECT
+                     'MA_%s_%s' AS type, date, ticker, value1, value2, total,
+                     difference, previous_difference, percentage, trend, minimum_trend,
+                     (total + minimum_trend) AS 'trending'
+                 FROM fourth_stage""";
+
+        String query = String.format(indicatorMAQuery, firstInterval, secondInterval, firstInterval, secondInterval);
+        System.out.println("query:\n" + query);
+        return getFalseMap();
+//        return questDBService.executeQuery(query);
+    }
+    public Map<String, Object> insertIntoAnalysisMACompare(int firstInterval, int secondInterval){
+        String condition;
+        String query;
+        if (firstInterval > 0 && secondInterval > 0) {
+            condition = " type = 'MA_50_200'";
+            query = """
+                    INSERT INTO analysis_market
+                    SELECT
+                        type,
+                        date,
+                        COUNT(ticker) AS 'total',
+                        SUM(CASE WHEN difference > 0 THEN 1 ELSE 0 END) AS 'count',
+                        (SUM(CASE WHEN difference > 0 THEN 1 ELSE 0 END) * 1.0 / COUNT(ticker)) * 100 AS 'percentage'
+                    FROM
+                      indicator_d_MA
+                    WHERE
+                    type LIKE 'MA_%'
+                    AND total > 0""";
+        } else {
+            return getFalseMap();
+        }
+        String latest = questDBService.getLatestDate("analysis_market", condition);
+        System.out.println("Latest:" + latest);
+        if (latest == null) {
+            return getFalseMap();
+        }
+        query += " AND date > to_date('" + latest + "', 'yyyyMMdd')";
+        query += " GROUP BY type, date ORDER BY type, date ASC;";
+        System.out.println("Query:\n" + query);
+//        return getFalseMap();
+        return questDBService.executeQuery(query);
+    }
+
     public Map<String, Object> updateAnalysisMA(String type) {
         Map<String, Object> result1 = insertIntoIndicatorMA(type, 50, true);
         if (!result1.containsKey("response")) {
