@@ -78,10 +78,12 @@ public class DataService {
 
     public List<Map<String, Object>> getAnalysis(String type) {
         String query;
-        if ("high52w".equals(type)) {
+        if ("high52w".equalsIgnoreCase(type)) {
             query = "SELECT date, percentage FROM analysis_market WHERE type = 'high52w' ORDER BY date ASC";
-        } else if ("low52w".equals(type)) {
+        } else if ("low52w".equalsIgnoreCase(type)) {
             query = "SELECT date, percentage FROM analysis_market WHERE type = 'low52w' ORDER BY date ASC";
+        } else if ("ma_50_200".equalsIgnoreCase(type)) {
+            query = "SELECT date, percentage FROM analysis_market WHERE type = 'MA_50_200' ORDER BY date ASC";
         } else {
             return List.of();
         }
