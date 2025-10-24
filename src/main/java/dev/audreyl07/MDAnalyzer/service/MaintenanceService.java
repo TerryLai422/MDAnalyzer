@@ -239,8 +239,6 @@ public class MaintenanceService {
                 FROM fourth_stage""";
 
         String query = String.format(indicatorMAQuery, interval, interval, sourceTable, targetTable, interval);
-        System.out.println("query:\n" + query);
-//        return getFalseMap();
         return questDBService.executeQuery(query);
     }
 
@@ -272,8 +270,6 @@ public class MaintenanceService {
         }
         query += " AND date > to_date('" + latest + "', 'yyyyMMdd')";
         query += " GROUP BY type, date ORDER BY type, date ASC;";
-        System.out.println("Query:\n" + query);
-//        return getFalseMap();
         return questDBService.executeQuery(query);
     }
 
@@ -281,7 +277,7 @@ public class MaintenanceService {
         String sourceTable;
         String targetTable;
         if ("d".equals(type)) {
-            sourceTable = "historical_d";
+            sourceTable = "indicator_d_MA";
             targetTable = "indicator_d_MA";
         } else if ("etf_d".equals(type)) {
             sourceTable = "historical_etf_d";
@@ -290,124 +286,104 @@ public class MaintenanceService {
             return getFalseMap();
         }
 
-
         String indicatorMAQuery = """
-               WITH first_stage AS
-                 (SELECT
-                     i1.date, i1.ticker,
-                     i1.value2 AS 'value1',
-                     i2.value2 AS 'value2',
-                         count() OVER\s
-                         (PARTITION BY i2.ticker ORDER BY i2.date\s
-                         )\s
-                     AS 'total'
-                 FROM indicator_d_MA i1
-                 JOIN indicator_d_MA i2 ON i1.date = i2.date AND i1.ticker = i2.ticker
-                 WHERE i1.type = 'MA_%s' and i2.type = 'MA_%s'
-                 AND i1.ticker = 'TSLA'),
-                 second_stage AS
-                 (SELECT
-                     date, ticker, value1, value2, total,
-                     value1 - value2 AS 'difference',
-                     ((value1 - value2) / value2) * 100 AS 'percentage',
-                     first_value(value1 - value2) OVER\s
-                         (PARTITION BY ticker ORDER BY date
-                         ROWS 1 PRECEDING EXCLUDE CURRENT ROW)
-                     AS 'previous_difference'
-                 FROM first_stage
-                 WHERE total > 0),
-                 third_stage AS
-                 (SELECT
-                     date, ticker, value1, value2, total,
-                     difference, previous_difference, percentage,
-                     CASE
-                         WHEN difference >=0 and previous_difference >= 0 THEN total
-                         ELSE
-                             CASE
-                                 WHEN difference < 0 and previous_difference < 0 THEN total
-                                 ELSE (1 - total)
-                             END
-                     END AS 'trend'
-                 FROM second_stage),
-                 fourth_stage AS
-                 (SELECT
-                     date, ticker, value1, value2, total,
-                     difference, previous_difference, percentage, trend,
-                     min(trend) OVER (PARTITION BY ticker ORDER BY date\s
-                         ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
-                     AS 'minimum_trend'
-                 FROM third_stage)
-                 SELECT
-                     'MA_%s_%s' AS type, date, ticker, value1, value2, total,
-                     difference, previous_difference, percentage, trend, minimum_trend,
-                     (total + minimum_trend) AS 'trending'
-                 FROM fourth_stage""";
-
-        String query = String.format(indicatorMAQuery, firstInterval, secondInterval, firstInterval, secondInterval);
-        System.out.println("query:\n" + query);
-        return getFalseMap();
-//        return questDBService.executeQuery(query);
-    }
-    public Map<String, Object> insertIntoAnalysisMACompare(int firstInterval, int secondInterval){
-        String condition;
-        String query;
-        if (firstInterval > 0 && secondInterval > 0) {
-            condition = " type = 'MA_50_200'";
-            query = """
-                    INSERT INTO analysis_market
-                    SELECT
-                        type,
-                        date,
-                        COUNT(ticker) AS 'total',
-                        SUM(CASE WHEN difference > 0 THEN 1 ELSE 0 END) AS 'count',
-                        (SUM(CASE WHEN difference > 0 THEN 1 ELSE 0 END) * 1.0 / COUNT(ticker)) * 100 AS 'percentage'
-                    FROM
-                      indicator_d_MA
-                    WHERE
-                    type LIKE 'MA_%'
-                    AND total > 0""";
-        } else {
-            return getFalseMap();
-        }
-        String latest = questDBService.getLatestDate("analysis_market", condition);
-        System.out.println("Latest:" + latest);
-        if (latest == null) {
-            return getFalseMap();
-        }
-        query += " AND date > to_date('" + latest + "', 'yyyyMMdd')";
-        query += " GROUP BY type, date ORDER BY type, date ASC;";
-        System.out.println("Query:\n" + query);
-//        return getFalseMap();
+                WITH first_stage AS
+                  (SELECT
+                      i1.date, i1.ticker,
+                      i1.value2 AS 'value1',
+                      i2.value2 AS 'value2',
+                          count() OVER\s
+                          (PARTITION BY i2.ticker ORDER BY i2.date\s
+                          )\s
+                      AS 'total'
+                  FROM %s i1
+                  JOIN %s i2 ON i1.date = i2.date AND i1.ticker = i2.ticker
+                  WHERE i1.type = 'MA_%s' and i2.type = 'MA_%s'),
+                  second_stage AS
+                  (SELECT
+                      date, ticker, value1, value2, total,
+                      value1 - value2 AS 'difference',
+                      ((value1 - value2) / value2) * 100 AS 'percentage',
+                      first_value(value1 - value2) OVER\s
+                          (PARTITION BY ticker ORDER BY date
+                          ROWS 1 PRECEDING EXCLUDE CURRENT ROW)
+                      AS 'previous_difference'
+                  FROM first_stage
+                  WHERE total > 0),
+                  third_stage AS
+                  (SELECT
+                      date, ticker, value1, value2, total,
+                      difference, previous_difference, percentage,
+                      CASE
+                          WHEN difference >=0 and previous_difference >= 0 THEN total
+                          ELSE
+                              CASE
+                                  WHEN difference < 0 and previous_difference < 0 THEN total
+                                  ELSE (1 - total)
+                              END
+                      END AS 'trend'
+                  FROM second_stage),
+                  fourth_stage AS
+                  (SELECT
+                      date, ticker, value1, value2, total,
+                      difference, previous_difference, percentage, trend,
+                      min(trend) OVER (PARTITION BY ticker ORDER BY date\s
+                          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+                      AS 'minimum_trend'
+                  FROM third_stage)
+                  INSERT INTO %s
+                  SELECT
+                      '%s' AS type, date, ticker, value1, value2, total,
+                      difference, previous_difference, percentage, trend, minimum_trend,
+                      (total + minimum_trend) AS 'trending'
+                  FROM fourth_stage""";
+        String maType = String.format("MA_%s_%s", firstInterval, secondInterval);
+        String query = String.format(indicatorMAQuery, sourceTable, sourceTable,
+                firstInterval, secondInterval, targetTable, maType);
         return questDBService.executeQuery(query);
     }
 
-    public Map<String, Object> updateAnalysisMA(String type) {
-        Map<String, Object> result1 = insertIntoIndicatorMA(type, 50, true);
+    public Map<String, Object> updateAnalysisMA(String type, int firstInterval, int secondInterval) {
+        int totalDuration = 0;
+        Map<String, Object> result1 = insertIntoIndicatorMA(type, firstInterval, true);
+        System.out.println("RESULT1:\n" + result1);
         if (!result1.containsKey("response")) {
             return getFalseMap();
         }
+        totalDuration += getDuration(result1);
         Map<String, Object> response1 = (Map<String, Object>) result1.get("response");
         if (!"OK".equals(response1.getOrDefault("dml", "FAILURE"))) {
             return getFalseMap();
         }
-        Map<String, Object> result2 = insertIntoIndicatorMA(type, 200, false);
+        Map<String, Object> result2 = insertIntoIndicatorMA(type, secondInterval, false);
+        System.out.println("RESULT2:\n" + result2);
         if (!result2.containsKey("response")) {
             return getFalseMap();
         }
+        totalDuration += getDuration(result2);
         Map<String, Object> response2 = (Map<String, Object>) result1.get("response");
         if (!"OK".equals(response2.getOrDefault("dml", "FAILURE"))) {
             return getFalseMap();
         }
-        Map<String, Object> result3 = insertIntoAnalysisMA("MA");
+        Map<String, Object> result3 = insertIntoIndicatorMACompare(type, firstInterval, secondInterval);
+        System.out.println("RESULT3:\n" + result3);
         if (!result3.containsKey("response")) {
             return getFalseMap();
         }
+        totalDuration += getDuration(result3);
         Map<String, Object> response3 = (Map<String, Object>) result1.get("response");
         if (!"OK".equals(response3.getOrDefault("dml", "FAILURE"))) {
             return getFalseMap();
         }
+        Map<String, Object> result4 = insertIntoAnalysisMA("MA");
+        System.out.println("RESULT4:\n" + result4);
+        if (!result4.containsKey("response")) {
+            return getFalseMap();
+        }
+        totalDuration += getDuration(result4);
         Map<String, Object> map = getFalseMap();
         map.put("success", Boolean.TRUE);
+        map.put("duration", totalDuration);
         return map;
     }
 
@@ -454,32 +430,48 @@ public class MaintenanceService {
     }
 
     public Map<String, Object> updateAnalysis52w(String type) {
+        int totalDuration  = 0;
         Map<String, Object> result1 = insertIntoIndicator52w(type);
+        System.out.println("RESULT1:\n" + result1);
         if (!result1.containsKey("response")) {
             return getFalseMap();
         }
+        totalDuration += getDuration(result1);
         Map<String, Object> response1 = (Map<String, Object>) result1.get("response");
         if (!"OK".equals(response1.getOrDefault("dml", "FAILURE"))) {
             return getFalseMap();
         }
         Map<String, Object> result2 = insertIntoAnalysis52w("high52w");
+        System.out.println("RESULT2:\n" + result2);
         if (!result2.containsKey("response")) {
             return getFalseMap();
         }
+        totalDuration += getDuration(result2);
         Map<String, Object> response2 = (Map<String, Object>) result1.get("response");
         if (!"OK".equals(response2.getOrDefault("dml", "FAILURE"))) {
             return getFalseMap();
         }
         Map<String, Object> result3 = insertIntoAnalysis52w("low52w");
+        System.out.println("RESULT3:\n" + result3);
         if (!result3.containsKey("response")) {
             return getFalseMap();
         }
+        totalDuration += getDuration(result3);
         Map<String, Object> response3 = (Map<String, Object>) result1.get("response");
         if (!"OK".equals(response3.getOrDefault("dml", "FAILURE"))) {
             return getFalseMap();
         }
         Map<String, Object> map = getFalseMap();
         map.put("success", Boolean.TRUE);
+        map.put("duration", totalDuration);
         return map;
+    }
+
+    private int getDuration(Map<String, Object> result) {
+        Object durationObj = result.get("duration");
+        if (durationObj instanceof Number) {
+            return ((Number) durationObj).intValue();
+        }
+        return 0;
     }
 }

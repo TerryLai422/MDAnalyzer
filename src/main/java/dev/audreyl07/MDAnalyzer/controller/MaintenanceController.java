@@ -55,7 +55,7 @@ public class MaintenanceController {
     }
 
     @PostMapping(value = "/update-52w")
-    public ResponseEntity<Object> test(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<Object> update52w(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);
         String type = request.getOrDefault("type", "").toString();
         Map<String, Object> result = maintenanceService.updateAnalysis52w(type);
@@ -73,6 +73,18 @@ public class MaintenanceController {
         result.putIfAbsent("success", Boolean.TRUE);
         return ResponseEntity.ok().body(result);
     }
+
+    @PostMapping(value = "/insert-MACompare")
+    public ResponseEntity<Object> insertIndicatorMACompare(@RequestBody Map<String, Object> request) {
+        System.out.println("request:" + request);
+        String type = request.getOrDefault("type", "").toString();
+        int interval = Integer.valueOf(request.getOrDefault("interval", 0).toString());
+        int secondInterval = Integer.valueOf(request.getOrDefault("second_interval", 0).toString());
+        Map<String, Object> result = maintenanceService.insertIntoIndicatorMACompare(type, interval, secondInterval);
+        result.putIfAbsent("success", Boolean.TRUE);
+        return ResponseEntity.ok().body(result);
+    }
+
     @PostMapping(value = "/insert-analysisMA")
     public ResponseEntity<Object> insertAnalysisMA(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);
@@ -81,6 +93,18 @@ public class MaintenanceController {
         result.putIfAbsent("success", Boolean.TRUE);
         return ResponseEntity.ok().body(result);
     }
+
+    @PostMapping(value = "/update-MA")
+    public ResponseEntity<Object> updateMA(@RequestBody Map<String, Object> request) {
+        System.out.println("request:" + request);
+        String type = request.getOrDefault("type", "").toString();
+        int firstInterval = Integer.valueOf(request.getOrDefault("first_interval", 0).toString());
+        int secondInterval = Integer.valueOf(request.getOrDefault("second_interval", 0).toString());
+        Map<String, Object> result = maintenanceService.updateAnalysisMA(type, firstInterval, secondInterval);
+        result.putIfAbsent("success", Boolean.TRUE);
+        return ResponseEntity.ok().body(result);
+    }
+
     @PostMapping(value = "/latest")
     public ResponseEntity<Object> getlatest(@RequestBody Map<String, Object> request) {
         System.out.println("request:" + request);
